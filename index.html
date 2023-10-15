@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>estoque</title>
+    <style>
+        body {font-family: Arial, sans-serif; background-color: #427bf6; padding: 20px;}
+        table {width: 50%; margin-bottom: 20px;}
+        th, td {padding: 15px; text-align: center; border-bottom: 1px solid #fa0b0b;}
+        form {background-color: #b37e7e; padding: 20px; border-radius: 5px; width: 50%; }
+        form {background-color: #836d6d; padding: 20px; border-radius: 5px; width: 90%;}
+        input[type="submit"] {background-color: #4CAF50; color: white; padding: 14px 20px; margin: 8px 0; border: none; cursor: pointer; width: 10%; border-radius: 5px;}
+        input[type="submit"]:hover {background-color: #45a049;}
+
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/1.5.3/jspdf.debug.js"></script>
+</head>
+<body>
+
+<h2>Controle de Estoque</h2>
+<h3>Açougue do zeca</h3>
+<table id="estoque">
+  <tr>
+    <th>Produto</th>
+    <th>Quantidade</th>
+    <th>Ações</th>
+  </tr>
+</table>
+
+<h2>Adicionar Produto</h2>
+
+<form id="formEntrada">
+  <label for="produtoEntrada">Produto:</label><br>
+  <input type="text" id="produtoEntrada" name="produto" required><br>
+  <label for="quantidadeEntrada">Quantidade:</label><br>
+  <input type="number" id="quantidadeEntrada" name="quantidade" required><br><br>
+  <input type="submit" value="Adicionar">
+</form>
+
+<h2>Registrar Saída de Estoque</h2>
+
+<form id="formSaida">
+  <label for="produtoSaida">Produto:</label><br>
+  <input type="text" id="produtoSaida" name="produto" required><br>
+  <label for="quantidadeSaida">Quantidade:</label><br>
+  <input type="number" id="quantidadeSaida" name="quantidade" required><br><br>
+  <input type="submit" value="Registrar Saída">
+</form>
+<br>
+<button id="btnPdf">Gerar PDF</button>
+<button id="btnShare" disabled>Compartilhar PDF</button>
+
+<script>
+let formEntrada = document.getElementById('formEntrada');
+let formSaida = document.getElementById('formSaida');
+let estoque = document.getElementById('estoque');
+
+// Carregar dados do localStorage
+let dados = JSON.parse(localStorage.getItem('estoque')) || [];
+dados.forEach(adicionarLinha);
+
+formEntrada.addEventListener('submit', function(e) {
+    e.preventDefault();
+    let produto = document.getElementById('produtoEntrada').value;
+    let quantidade = parseInt(document.getElementById('quantidadeEntrada').value);
+
+    // Adicionar ao estoque
+    let itemIndex = dados.findIndex(item => item.produto === produto);
+    if (itemIndex !== -1) {
+        dados[itemIndex].quantidade += quantidade;
+        atualizarTabela();
+    } else {
+        let item = {produto, quantidade};
+        dados.push(item);
+        adicionarLinha(item);
+    }
+
+    // Salvar no localStorage
+    localStorage.setItem('estoque', JSON.stringify(dados));
+
+    // Limpar o formulário
+    formEntrada.reset();
+});
+
+formSaida.addEventListener('submit', function(e) {
+    e.preventDefault();
+    let produto = document.getElementById('produtoSaida').value;
+    let quantidade = parseInt(document.getElementById('quantidadeSaida').value);
+
+    // Registrar saída do estoque
+    let itemIndex = dados.findIndex(item => item.produto === produto);
+    if (itemIndex !== -1 && dados[itemIndex].quantidade >= quantidade) {
+        dados[itemIndex].quantidade -= quantidade;
+        atualizarTabela();
+        
+        // Salvar no localStorage
+        localStorage.setItem('estoque', JSON.stringify(dados));
+    } else {
+        alert("Produto não encontrado ou quantidade insuficiente no estoque.");
+    }
+
+    // Limpar o formulário
+    formSaida.reset();
+});
+
+function adicionarLinha(item, index) {
+    let row = estoque.insertRow();
+    let cell1 = row.insertCell(0);
+    let cell2 = row.insertCell(1);
+    let cell3 = row.insertCell(2);
+    
+    cell1.innerHTML = item.produto;
+    cell2.innerHTML = item.quantidade;
+    
+    let btnExcluir = document.createElement("BUTTON");
+    btnExcluir.innerHTML = "Excluir";
+    
+    btnExcluir.addEventListener("click", function() {
+        dados.splice(index, 1);
+        atualizarTabela();
+        
+        // Salvar no localStorage
+        localStorage.setItem('estoque', JSON.stringify(dados));
+    });
+    
+    cell3.appendChild(btnExcluir);
+}
+
+function atualizarTabela() {
+    // Limpar tabela
+    while (estoque.rows.length > 1) {
+        estoque.deleteRow(1);
+    }
+
+    // Adicionar linhas atualizadas
+    dados.forEach(adicionarLinha);
+}
+
+document.getElementById('btnPdf').addEventListener('click', function() {
+    let doc = new jsPDF();
+    
+    doc.text('Controle de Estoque', 10, 10);
+    
+    dados.forEach(function(item, index) {
+        let y = 20 + (index * 10);
+        doc.text(item.produto + ': ' + item.quantidade, 10, y);
+    });
+    
+    doc.save('estoque.pdf');
+});
+
+document.getElementById('btnShare').addEventListener('click', function() {
+    if (navigator.share) {
+        navigator.share({
+            title: 'Controle de Estoque',
+            text: 'Aqui está o seu PDF do Controle de Estoque.',
+            files: [new File([pdfDoc.output('blob')], 'estoque.pdf', {type: 'application/pdf'})],
+        })
+        .then(() => console.log('Conteúdo compartilhado com sucesso!'))
+        .catch((error) => console.log('Erro ao compartilhar', error));
+    } else {
+        console.log('API Web Share não suportada');
+    }
+});
+</script>
+
+<h4>atualizado por Venicio e Ruan</h4>
+</body>
+</html>
